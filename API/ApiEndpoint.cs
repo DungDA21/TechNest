@@ -38,7 +38,14 @@ builder.Services.AddCors(opt =>
          .AllowAnyHeader()
          .AllowAnyMethod());
 });
-
+//{
+//    "ConnectionStrings": {
+//        "Default": "Server=CPPDUNGDA21-1\\SQLEXPRESS;Database=WebsiteSellLaptop;Trusted_Connection=True;TrustServerCertificate=True;"
+//    },
+//  "Cors": {
+//        "AllowedOrigins": ["http://127.0.0.1:5500", "http://localhost:3000"]
+//  }
+//}
 var app = builder.Build();
 app.UseCors("CorsPolicy");
 
