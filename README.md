@@ -16,7 +16,8 @@ Backend API for website of sell laptop, built with ASP.NET Core and SQL Server.
 - Dapper
 
 - Swagger
-## Installation1. Clone repo:
+## Installation
+1. Clone repo:
 
 git clone https://github.com/DungDA21/BE-Technest
 
