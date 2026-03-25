@@ -19,7 +19,7 @@ Backend API for website of sell laptop, built with ASP.NET Core and SQL Server.
 ## Installation
 1. Clone repo:
 
-git clone https://github.com/DungDA21/BE-Technest
+- git clone https://github.com/DungDA21/BE-Technest
 
 2. Open appsettings.json and change:
 
