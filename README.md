@@ -13,8 +13,6 @@ Backend API for website of sell laptop, built with ASP.NET Core and SQL Server.
 
 - SQL Server
 
-- Dapper
-
 - Swagger
 ## Installation
 1. Clone repo:
