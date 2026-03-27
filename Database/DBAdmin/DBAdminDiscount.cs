@@ -13,7 +13,6 @@ namespace WebsiteComputer.Database.DBAdmin
     {
         public static async Task<CreateDiscountPolicy> CreateDiscount(string connStr, CreateDiscountPolicy newDiscount) 
         {
-            newDiscount = new CreateDiscountPolicy();
             try 
             {
 
@@ -130,7 +129,7 @@ namespace WebsiteComputer.Database.DBAdmin
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    listDiscountPolicy.Add( discountPolicy = new DiscountPolicy()
+                    listDiscountPolicy.Add(discountPolicy = new DiscountPolicy()
                     {
                         discountID = reader.GetInt32(reader.GetOrdinal("discountID")),
                         discountCode = reader.GetString(reader.GetOrdinal("discountCode")),
