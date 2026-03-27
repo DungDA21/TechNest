@@ -1,23 +1,39 @@
-﻿namespace Websitecomputer.Models
+﻿namespace WebsiteComputer.Models
 {
-    internal class ClientDtos
+    public class ClientDtos
     {
-        public record Client
+       
+        public record ClientDetail
         {
-            public int AccountID { get; init; }
-            public int ClientID { get; init; }
-            public string ClientCode { get; init; } = "";
-            public string ClientName { get; init; } = "";
-            public string PhoneNumber { get; init; } = "";
-            public string ClientAddess { get; set; } = "";
-            public decimal TotalMoney { get; set; }
+            public int accountID { get; set; } 
+            public string clientCode { get; set; } = "";
+            public string username { get; set; } = "";
+            public string password { get; set; } = "";
+            public string clientName { get; set; } = "";
+            public string phoneNumber { get; set; } = "";
+            public string clientAddress { get; set; } = "";
+            public decimal totalMoney { get; set; } = 0;
+
         }
+        public record ClientLogin(
+            string username, 
+            string password
+            );
+        public class ClientInformation
+        {
+            public string clientCode { get; set; } = "";
+            public string clientName { get; set; } = "";
+            public string phoneNumber { get; set; } = "";
+            public string clientAddress { get; set; } = "";
+            public decimal totalMoney { get; set; } = 0;
+        }
+
         public record Cart
         {
-            public int CartID { get; init; }
-            public int ClientID { get; set; }
-            public int CartItemID { get; set; }
-            public int ProductID { get; set; }
+            public int cartID { get; init; }
+            public int clientID { get; set; }
+            public int cartItemID { get; set; }
+            public int productID { get; set; }
             public decimal price { get; set; }
 
         }

@@ -1,14 +1,14 @@
-﻿using ConsoleApp1.DB;
+﻿using WebsiteComputer.Database;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Data;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using Websitecomputer.Page;
-using static Websitecomputer.Models.ClientDtos;
+using WebsiteComputer.Models;
+using static WebsiteComputer.Models.ClientDtos;
 
-namespace Websitecomputer.DB
+namespace WebsiteComputer.Database
 {
     public class DBCart
     {
@@ -23,13 +23,15 @@ namespace Websitecomputer.DB
         //       .Build();
         //    var connStr = config.GetConnectionString("Default")
         //        ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
-        //    var json = await ReadAsJsonAsync(connStr, "P001");
-        //    Console.WriteLine(json);
-        //   await AddProductToCart(connStr, "P001", "CLI-0001", 5);
+        //    //var json = await ReadAsJsonAsync(connStr, "P001");
+        //    //Console.WriteLine(json);
+        //    await AddProductToCart(connStr, "P002", "CLI-0008", 5);
+        //    await AddProductToCart(connStr, "P003", "CLI-0008", 5);
+        //    await AddProductToCart(connStr, "P004", "CLI-0008", 5);
 
         //}
 
-        public static async Task<int?> GetCart(string connStr, string ClientCode)
+        public static async Task<int?> GetCartID(string connStr, string ClientCode)
         {
             var ClientID = await ConnectDB.GetClientIDFromClientCode(connStr, ClientCode);
             int? CartID = 0 ;
@@ -62,7 +64,7 @@ namespace Websitecomputer.DB
             try
             {
                 var productID = await ConnectDB.GetProductIDFromProductCode(connStr, productCode);
-                var CartID = await GetCart(connStr, clientCode);
+                var CartID = await GetCartID(connStr, clientCode);
                 using var conn = ConnectDB.Create(connStr);
                 await conn.OpenAsync();
                 var sql = @"update dbo.CartItem
@@ -95,6 +97,28 @@ namespace Websitecomputer.DB
             {
                 Console.WriteLine("Can't Connection");
                 Console.WriteLine(e.Message);
+            }
+        }
+        public static async Task deleleProductInCartItem(string connStr, string ProductCode, string ClientCode )
+        {
+            var CartID = await GetCartID(connStr, ClientCode);
+            var ProductID = await ConnectDB.GetProductIDFromProductCode(connStr, ProductCode);
+            try
+            {
+                var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                            DELETE FROM [dbo].[CartItem]
+                            WHERE ProductID = @ProductID and CartID = @CartID
+                            ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@CartID", SqlDbType.Int) { Value = CartID });
+                cmd.Parameters.Add(new SqlParameter("@ProductID", SqlDbType.Int) { Value = ProductID });
+                using var reader = await cmd.ExecuteReaderAsync();
+            }
+            catch(Exception ex)
+            {
+                throw;
             }
         }
         public static async Task<List<CartItem?>> GetCartItem(string connStr, int CartID)
@@ -149,7 +173,7 @@ namespace Websitecomputer.DB
         }
         public static async Task<List<CartItem?>> ReadAsJsonAsync(string connStr, string clientCode)
         {
-            var CartID = await GetCart(connStr, clientCode);
+            var CartID = await GetCartID(connStr, clientCode);
             var listCartItem = await GetCartItem(connStr, Convert.ToInt32(CartID));
             var json = JsonSerializer.Serialize(listCartItem, new JsonSerializerOptions
             {

@@ -1,23 +1,22 @@
-﻿namespace ConsoleApp1.Models
+﻿namespace WebsiteComputer.Models
 {
-    public record ProductListItem
+    public record ProductItem
     {
-        public string Id { get; init; } = "";
-        public string Name { get; init; } = "";
-        public decimal Price { get; init; }
-        public string Brand { get; init; } = "";
-        public string? Thumbnail { get; init; }
-        public int Stock { get; init; }
-        public DateTime CreateAt { get; init; }
+        public string id { get; init; } = "";
+        public string name { get; init; } = "";
+        public decimal price { get; init; }
+        public string brand { get; init; } = "";
+        public string category { get; set; } = "";
+        public string? thumbnail { get; init; }
+        public int stock { get; init; }
+        public DateTime createAt { get; init; }
     }
-    public record ProductSpec{
-        public string CPU { get; init; } = "";
-        public string RAM { get; init; } = "";
-        public string Storage { get; init; } = "";
-        public string Display { get; set; } = "";
-        public string GPU { get; set; } = "";
+
+    public record CreateProductRequest
+    {
+        public CreateUpdateProduct ProductInfo { get; init; } = default!;
+        public List<ProductSpec?> ProductSpecs { get; init; } = [];
     }
-   
     public record Pagination(
         int Page,
         int PageSize,
@@ -25,7 +24,7 @@
         int TotalPages
         );
     public record ProductListResponse(
-        IEnumerable<ProductListItem> Data,
+        IEnumerable<ProductItem> Data,
         Pagination Pagination,
         object AppliedFilters //{search, sort}
 

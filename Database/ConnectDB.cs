@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using System;
 using System.Data;
-using Microsoft.Data.SqlClient;
 
-namespace ConsoleApp1.DB
+namespace WebsiteComputer.Database
 {
     public static class ConnectDB
     {
@@ -56,6 +57,32 @@ namespace ConsoleApp1.DB
                 Console.WriteLine(e.Message);
             }
             return ClientID;
+        }
+        public static async Task<int> GetOrderIDFromOrderCode(string connStr,string orderCode)
+        {
+            int orderID = 1;
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"select 
+                            o.OrderID as OrderID
+                            from dbo.Orders as o
+                            where o.OrderCode = @OrderCode";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@OrderCode", SqlDbType.VarChar) { Value = orderCode });
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    orderID = reader.GetInt32(reader.GetOrdinal("OrderID"));
+                }
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+            return orderID;
         }
     }
 }

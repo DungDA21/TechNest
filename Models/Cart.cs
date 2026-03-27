@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection.PortableExecutable;
 using System.Text;
 
-namespace Websitecomputer.Page
+namespace WebsiteComputer.Models
 {
      public record CartHeader()
     {
