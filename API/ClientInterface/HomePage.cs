@@ -9,6 +9,7 @@ using WebsiteComputer.Database;
 
 namespace API.ClientInterface
 {
+
     [ApiController]
     [Route("api/products")]
     
@@ -20,19 +21,14 @@ namespace API.ClientInterface
             _config = config;
         }
         private string connStr =>
-            _config.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
+            _config.GetConnectionString("Supabase")
+            ?? throw new InvalidOperationException("Missing ConnectionStrings:Supabase");
 
         [HttpGet]
-        public async Task<IActionResult> GetAllProduct(string? brandName, string? category)
+        public async Task<IActionResult> GetAllProduct()
         {
-            var listProduct = await DBHomepage.SelectAllProductsHomepage(connStr, brandName, category);
-            var json = JsonSerializer.Serialize(listProduct, new JsonSerializerOptions {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            });
-            Console.WriteLine(json);
+            var listProduct = await DBHomepage.SelectAllProductsAsList(connStr);
+            
             return Ok(listProduct);
         }
         [HttpGet("category/{CategoryName}")]

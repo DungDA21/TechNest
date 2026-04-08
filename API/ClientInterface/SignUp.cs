@@ -9,7 +9,7 @@ using static WebsiteComputer.Database.DBClient;
 namespace API.ClientInterface
 {
     [ApiController]
-    [Route("api/login")]
+    [Route("api/signup")]
     public class SignUp : ControllerBase
     {
         private readonly IConfiguration _config;
@@ -23,7 +23,7 @@ namespace API.ClientInterface
             _config.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
         [HttpPost]
-        public async Task<IActionResult> CreateNewClient([FromBody] ClientDtos.ClientDetail client)
+        public async Task<IActionResult> CreateNewClient([FromBody] ClientDtos.ClientSignIn client)
         {
 
             try

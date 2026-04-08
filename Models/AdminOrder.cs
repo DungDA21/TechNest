@@ -8,12 +8,13 @@ namespace WebsiteComputer.Models
     {
         public record GetOrderList
         {
-            public string orderCode { get; set; } = "";
+            public string orderID { get; set; } = "";
             public string clientName { get; set; } = "";
             public DateTime creatAt { get; set; } 
             public string phoneNumber { get; set; } = "";
             public string Address { get; set; } = "";
             public decimal totalMoney { get; set; }
+            public decimal totalMoneyAfterDiscount { get; set; }
 
         }
         public record OrderDetail
@@ -27,7 +28,8 @@ namespace WebsiteComputer.Models
             public int quantity { get; set; }
             public decimal price { get; set; }
             public decimal totalPrice { get; set; }
-            
+            public decimal totalPriceAfterDiscount { get; set; } = 0;
+
         }
     }
 }

@@ -93,8 +93,7 @@ namespace WebsiteComputer.Database.DBAdmin
                 using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
-                    discountPolicy.discountID = reader.GetInt32(reader.GetOrdinal("discountID"));
-                    discountPolicy.discountCode = reader.GetString(reader.GetOrdinal("discountCode"));
+                    discountPolicy.discountID =  reader.GetString(reader.GetOrdinal("discountCode"));
                     discountPolicy.discountName = reader.GetString(reader.GetOrdinal("disountName"));
                     discountPolicy.discountValue = reader.GetDecimal(reader.GetOrdinal("discountValue"));
                     discountPolicy.dateStart = reader.GetDateTime(reader.GetOrdinal("dateStart"));
@@ -131,8 +130,7 @@ namespace WebsiteComputer.Database.DBAdmin
                 {
                     listDiscountPolicy.Add(discountPolicy = new DiscountPolicy()
                     {
-                        discountID = reader.GetInt32(reader.GetOrdinal("discountID")),
-                        discountCode = reader.GetString(reader.GetOrdinal("discountCode")),
+                        discountID =  reader.GetString(reader.GetOrdinal("discountCode")),
                         discountName = reader.GetString(reader.GetOrdinal("disountName")),
                         discountValue = reader.GetDecimal(reader.GetOrdinal("discountValue")),
                         dateStart = reader.GetDateTime(reader.GetOrdinal("dateStart")),
@@ -181,8 +179,7 @@ namespace WebsiteComputer.Database.DBAdmin
 
                 if (await reader.ReadAsync())
                 {
-                    newDiscountUpdate.discountID = reader.GetInt32(reader.GetOrdinal("discountID"));
-                    newDiscountUpdate.discountCode = reader.GetString(reader.GetOrdinal("discountCode"));
+                    newDiscountUpdate.discountID = reader.GetString(reader.GetOrdinal("discountCode"));
                     newDiscountUpdate.discountName = reader.GetString(reader.GetOrdinal("discountName"));
                     newDiscountUpdate.discountValue = reader.GetDecimal(reader.GetOrdinal("discountValue"));
                     newDiscountUpdate.dateStart = reader.GetDateTime(reader.GetOrdinal("dateStart"));
@@ -212,6 +209,175 @@ namespace WebsiteComputer.Database.DBAdmin
                 throw;
             }
             return discountCode;
+        }
+        public static async Task<int> GeDiscountIDFromDiscountCode(string connStr, string Code)
+        {
+            int discountID = 1;
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"select 
+                            p.DiscountID as discountID
+                            from dbo.Discount as p
+                            where p.DiscountCode = @code";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@code", SqlDbType.VarChar) { Value = Code });
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    discountID = reader.GetInt32(reader.GetOrdinal("discountID"));
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            return discountID;
+        }
+        public static async Task<bool> applyDicountProductCode(string connStr, string code, string discountCode) {
+            int discountID = await GeDiscountIDFromDiscountCode(connStr, discountCode);
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                    begin tran 
+                    UPDATE [dbo].[Products]
+                       SET [DiscountID] = @discountID
+                    WHERE ProductCode = @productCode
+                    commit tran 
+                ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@discountID", SqlDbType.Int) { Value = discountID });
+                cmd.Parameters.Add(new SqlParameter("@productCode", SqlDbType.VarChar) { Value = code});
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+        public static async Task<bool> applyDicountAll(string connStr, string discountCode)
+        {
+            int discountID = await GeDiscountIDFromDiscountCode(connStr, discountCode);
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                   begin tran 
+                   UPDATE [dbo].[Products]
+                       SET [DiscountID] = @discountID
+                   commit tran 
+                ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@discountID", SqlDbType.Int) { Value = discountID });
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+        public static async Task<bool> applyDicountBrand(string connStr, int brandID, string discountCode)
+        {
+            int discountID = await GeDiscountIDFromDiscountCode(connStr, discountCode);
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                            begin tran
+                            UPDATE [dbo].[Products]
+                               SET [DiscountID] = @discountID
+                            WHERE BrandID = @brandID
+                            commit tran 
+                ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@discountID", SqlDbType.Int) { Value = discountID });
+                cmd.Parameters.Add(new SqlParameter("@brandID", SqlDbType.Int) { Value = brandID });
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+        public static async Task<bool> applyDicountCategorate(string connStr, string categoryID, string discountCode)
+        {
+            int discountID = await GeDiscountIDFromDiscountCode(connStr, discountCode);
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                            begin tran
+                            UPDATE [dbo].[Products]
+                               SET [DiscountID] = @discountID
+                             WHERE CategoryID = @CategoryID
+                             commit tran 
+                            ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@discountID", SqlDbType.Int) { Value = discountID });
+                cmd.Parameters.Add(new SqlParameter("@CategoryID", SqlDbType.Int) { Value = categoryID });  
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public static async Task<bool> applyDicountClient(string connStr,  string discountCode)
+        {
+            int discountID = await GeDiscountIDFromDiscountCode(connStr, discountCode);
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                            UPDATE [dbo].Client
+                               SET [DiscountID] = @DicountID
+                             WHERE TotalMoney > 100000000
+                            GO
+                            ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@discountID", SqlDbType.Int) { Value = discountID });
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+        public static async Task<bool> applyDicountOrder(string connStr, string discountCode)
+        {
+            int discountID = await GeDiscountIDFromDiscountCode(connStr, discountCode);
+            try
+            {
+                using var conn = ConnectDB.Create(connStr);
+                await conn.OpenAsync();
+                var sql = @"
+                            UPDATE [dbo].Client
+                               SET [DiscountID] = @DicountID
+                             WHERE TotalMoney > 100000000
+                            GO
+                            ";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@discountID", SqlDbType.Int) { Value = discountID });
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
         }
     }
 }

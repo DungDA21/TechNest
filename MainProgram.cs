@@ -27,8 +27,9 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
 });
 
-var connStr = config.GetConnectionString("Default")
-    ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
+var connStr = config.GetConnectionString("Supabase")
+    ?? throw new InvalidOperationException("Missing ConnectionStrings:Supabase");
+
 //Read origin for CORs List
 var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 

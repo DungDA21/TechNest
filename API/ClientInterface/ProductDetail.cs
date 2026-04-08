@@ -19,13 +19,13 @@ namespace API.ClientInterface
             _config = config;
         }
         private string connStr =>
-            _config.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
+            _config.GetConnectionString("Supabase")
+            ?? throw new InvalidOperationException("Missing ConnectionStrings:Supabase");
 
-        [HttpGet("{ProductCode}")]
-        public async Task<IActionResult> GetProduct(string ProductCode)
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetProduct(string id)
         {
-            var product = await DBProductDetail.ReadAsDtoAsync(connStr, ProductCode);
+            var product = await DBProductDetail.ReadAsDtoAsync(connStr, id);
 
             return Ok(product);
         }

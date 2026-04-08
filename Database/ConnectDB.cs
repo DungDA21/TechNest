@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Data;
+using Npgsql;
 
 namespace WebsiteComputer.Database
 {
@@ -9,23 +10,25 @@ namespace WebsiteComputer.Database
     {
         public static SqlConnection Create(string connectionString)
             => new SqlConnection(connectionString);
+        public static NpgsqlConnection ConnectSupabase(string connectionString)
+            => new NpgsqlConnection(connectionString);
         public static async Task<int> GetProductIDFromProductCode(string connStr,string productCode)
         {
             int productID = 1;
             try 
             {
-                using var conn = ConnectDB.Create(connStr);
+                using var conn = ConnectSupabase(connStr);
                 await conn.OpenAsync();
-                var sql = @"select 
-                            p.ProductID as productID
-                            from dbo.Products as p
-                            where p.productCode = @ProductCode";
-                await using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.Add(new SqlParameter("@ProductCode", SqlDbType.VarChar) { Value = productCode });
+                var sql = @"SELECT
+                                p.product_id AS productid
+                            FROM products p
+                            WHERE p.product_code = @product_code;";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.Add(new NpgsqlParameter("@product_code", SqlDbType.VarChar) { Value = productCode });
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
-                    productID = reader.GetInt32(reader.GetOrdinal("productID"));
+                    productID = reader.GetInt32(reader.GetOrdinal("productid"));
                 }
             }
             catch(Exception e) {
@@ -38,13 +41,13 @@ namespace WebsiteComputer.Database
             int ClientID = 1;
             try
             {
-                using var conn = ConnectDB.Create(connStr);
+                using var conn = ConnectDB.ConnectSupabase(connStr);
                 await conn.OpenAsync();
                 var sql = @"select 
                             p.ClientID as ClientID
                             from dbo.Client as p
                             where p.ClientCode = @ClientCode";
-                await using var cmd = new SqlCommand(sql, conn);
+                await using var cmd = new NpgsqlCommand(sql, conn);
                 cmd.Parameters.Add(new SqlParameter("@ClientCode", SqlDbType.VarChar) { Value = ClientCode });
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
@@ -63,13 +66,13 @@ namespace WebsiteComputer.Database
             int orderID = 1;
             try
             {
-                using var conn = ConnectDB.Create(connStr);
+                using var conn = ConnectDB.ConnectSupabase(connStr);
                 await conn.OpenAsync();
                 var sql = @"select 
                             o.OrderID as OrderID
                             from dbo.Orders as o
                             where o.OrderCode = @OrderCode";
-                await using var cmd = new SqlCommand(sql, conn);
+                await using var cmd = new NpgsqlCommand(sql, conn);
                 cmd.Parameters.Add(new SqlParameter("@OrderCode", SqlDbType.VarChar) { Value = orderCode });
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())

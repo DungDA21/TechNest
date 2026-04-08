@@ -22,13 +22,16 @@ namespace API.ClientInterface
         private string connStr =>
             _config.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
-        [HttpGet]
+        [HttpPost("check")]
         public async Task<IActionResult> LoginAction([FromBody] ClientDtos.ClientLogin client)
         {
 
             try
             {
-                var clientID = await DBClient.Login (connStr, client);
+                var clientID = await DBClient.Login(connStr, client);
+                if (clientID == null) {
+                    return BadRequest("Invalid username or password");
+                }
                 return Ok(clientID);
             }
             catch (Exception e)

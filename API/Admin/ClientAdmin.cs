@@ -10,11 +10,11 @@ namespace WebsiteComputer.API.Admin
 {
     [ApiController]
     [Route("api/admin/clients")]
-    public class Client : ControllerBase
+    public class ClientAdmin : ControllerBase
     {
         private readonly IConfiguration _config;
 
-        public Client(IConfiguration config)
+        public ClientAdmin(IConfiguration config)
         {
             _config = config;
         }

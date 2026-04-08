@@ -1,5 +1,4 @@
-﻿using WebsiteComputer.Database;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -9,7 +8,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using WebsiteComputer.Database;
 using WebsiteComputer.Models;
+using static WebsiteComputer.Models.AdminOrder;
 
 
 namespace WebsiteComputer.Database
@@ -105,6 +106,31 @@ namespace WebsiteComputer.Database
 
                         ) as s 
                         on s.ClientID = c.ClientID
+
+                        UPDATE oi
+                        SET oi.PriceAlterDiscount =
+                            CASE
+                                WHEN p.DiscountID IS NULL THEN p.Price*oi.Quantity
+                                ELSE p.Price * (1 - d.DiscountValue)*oi.Quantity
+                            END
+                        FROM OrderItems oi
+                        JOIN Products p
+                            ON oi.ProductID = p.ProductID
+                        LEFT JOIN Discount d
+                            ON p.DiscountID = d.DiscountID
+                        where p.productID = @ProductID;
+
+                        UPDATE o
+                        SET o.FinalPrice = ISNULL(x.TotalPrice*(1-d.DiscountValue), 0)
+                        FROM Orders o
+                        LEFT JOIN Discount d
+                            ON d.DiscountID = o.DiscountID
+                        OUTER APPLY (
+                            SELECT SUM(oi.PriceAlterDiscount) AS TotalPrice
+                            FROM OrderItems oi
+                            WHERE oi.OrderID = o.OrderID
+                        ) x
+                        where o.OrderID = @OrderID"";
                         ", conn, (SqlTransaction)tx);
                     
                     cmd.Parameters.Add("@OrderID", SqlDbType.Int).Value = orderID;
@@ -210,7 +236,89 @@ namespace WebsiteComputer.Database
 
             return orderID;
         }
-        
+        public static async Task<OrderDetail> GetOrderDetail(string conStr, string orderCodeDetail)
+        {
+            var orderId = await ConnectDB.GetOrderIDFromOrderCode(conStr, orderCodeDetail);
+            OrderDetail? orderDetail = null;
+            var listOrder = new List<OrderItems>();
+            try
+            {
+                using var conn = ConnectDB.Create(conStr);
+                await conn.OpenAsync();
+                var sql = @"SELECT 
+                                o.[TotalPrice] as totalPrice
+                                ,o.[CreateAt] as createAt
+                                ,[Address] as addressOrder
+                                ,o.[PhoneNumber] as phoneNumber
+                                ,o.TotalPrice as totalMoney
+	                            ,o.FinalPrice as finalPrice
+                                ,ClientName as clientName
+                            FROM [dbo].[Orders] as o
+                            left join Client as cl 
+                            on o.ClientID = cl.ClientID 
+
+                            where o.OrderID = @orderID
+
+                            Select  
+                                    oi.OrderID as orderID, 
+                                    ProductName as productName
+                                    ,Quantity  as quantity,
+		                            oi.Price as price 
+                                    ,oi.TotalPrice as orderItemTotalPrice,
+                                    oi.PriceAlterdiscount as priceAfterDiscount 
+                            from OrderItems as oi
+                            left join Products as p 
+                            on p.ProductID = oi.ProductID
+                            left join Discount as di 
+                            on p.DiscountID = di.DiscountID
+                            where oi.OrderID = @orderID";
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@orderID", SqlDbType.Int) { Value = orderId });
+                var reader = await cmd.ExecuteReaderAsync();
+                ;
+                if (await reader.ReadAsync())
+                {
+                    orderDetail = new OrderDetail
+                    {
+                        order = new GetOrderList
+                        {
+                            orderID = orderCodeDetail,
+                            clientName = reader.GetString(reader.GetOrdinal("clientName")),
+                            phoneNumber = reader.GetString(reader.GetOrdinal("phoneNumber")),
+                            Address = reader.GetString(reader.GetOrdinal("addressOrder")),
+                            creatAt = reader.GetDateTime(reader.GetOrdinal("createAt")),
+                            totalMoney = reader.GetDecimal(reader.GetOrdinal("totalMoney")),
+                            totalMoneyAfterDiscount = reader.GetDecimal(reader.GetOrdinal("finalPrice"))
+                        }
+
+                    };
+                }
+                await reader.NextResultAsync();
+                while (await reader.ReadAsync())
+                {
+                    var testOrder = new OrderItems();
+                    testOrder.totalPriceAfterDiscount = reader.GetDecimal(reader.GetOrdinal("priceAfterDiscount"));
+                    listOrder.Add(new OrderItems
+                    {
+                        productName = reader.GetString(reader.GetOrdinal("productName")),
+                        price = reader.GetDecimal(reader.GetOrdinal("price")),
+                        quantity = reader.GetInt32(reader.GetOrdinal("quantity")),
+                        totalPrice = reader.GetDecimal(reader.GetOrdinal("orderItemTotalPrice")),
+                        totalPriceAfterDiscount = reader.GetDecimal(reader.GetOrdinal("priceAfterDiscount"))
+                    });
+                }
+            }
+            catch
+            {
+                throw;
+            }
+            if (orderDetail != null)
+            {
+                orderDetail.listOrderItem = listOrder;
+            }
+            return orderDetail;
+
+        }
         public static async Task<List<Order>> GetListOrder(string connStr)
         {
             var list = new List<Order>();

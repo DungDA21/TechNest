@@ -1,4 +1,4 @@
-﻿using WebsiteComputer.Database;
+using WebsiteComputer.Database;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -6,48 +6,49 @@ using System.Data;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using WebsiteComputer.Models;
+using Npgsql;
 using static WebsiteComputer.Models.AdminProduct;
 
 namespace WebsiteComputer.Database
 {
     public static class DBProductDetail
     {
-        //public static async Task Main(string[] args)
-        //{
+        // public static async Task Main(string[] args)
+        // {
 
-        //    var builder = WebApplication.CreateBuilder(args);
+        //     var builder = WebApplication.CreateBuilder(args);
 
-        //    var config = new ConfigurationBuilder()
-        //       .SetBasePath(Directory.GetCurrentDirectory())
-        //       .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        //       .Build();
-        //    var connStr = config.GetConnectionString("Default")
-        //        ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
-        //    //var json = await ReadAsJsonAync(connStr, "P001");
-        //    //Console.WriteLine(json);
+        //     var config = new ConfigurationBuilder()
+        //         .SetBasePath(Directory.GetCurrentDirectory())
+        //         .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+        //         .Build();
+        //     var connStr = config.GetConnectionString("Supabase")
+        //         ?? throw new InvalidOperationException("Missing ConnectionStrings:Supabase");
+        //     var json = await ReadAsDtoAsync(connStr, "PRD001");
+        //     Console.WriteLine(json);
 
-        //}
+        // }
 
         public static async Task<List<ProductSpec?>> GetProductSpecAsync(string connStr, string ProductCode)
         {
             var listSpec = new List<ProductSpec?>();
-            int ProductID = await ConnectDB.GetProductIDFromProductCode(connStr, ProductCode);
             try
             {
-                using var conn = ConnectDB.Create(connStr);
+                using var conn = ConnectDB.ConnectSupabase(connStr);
                 await conn.OpenAsync();
 
                 var sql = @$"                  
-                            SELECT [SpecKey] as speckey
-                                  ,[SpecValue] as specvalue
-                              FROM [dbo].[ProductSpecs] as ps
-                              Inner Join Products as p
-                              ON  p.ProductID = ps.ProductID
-                              where ProductCode = @productCode
+                          SELECT
+    ps.spec_key   AS speckey,
+    ps.spec_value AS specvalue
+FROM product_specs ps
+INNER JOIN products p
+    ON p.product_id = ps.product_id
+WHERE p.product_code = @productCode;
                                                         ";
-                await using var cmd = new SqlCommand(sql, conn);
+                await using var cmd = new NpgsqlCommand(sql, conn);
 
-                cmd.Parameters.Add(new SqlParameter("@productCode", SqlDbType.VarChar) { Value = ProductCode });
+                cmd.Parameters.Add(new NpgsqlParameter("@productCode", SqlDbType.VarChar) { Value = ProductCode });
 
                 await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -73,49 +74,62 @@ namespace WebsiteComputer.Database
         public static async Task<ProductMainInfo?> GetProductMainAsync(string connStr, string ProductCode)
         {
             ProductMainInfo? info = null;
-            int ProductID = await ConnectDB.GetProductIDFromProductCode(connStr, ProductCode);
             try
             {
-                using var conn = ConnectDB.Create(connStr);
+                using var conn = ConnectDB.ConnectSupabase(connStr);
                 await conn.OpenAsync();
                 var sql = @$"
-                            SELECT
-                                p.ProductName  AS Name,
-                                p.Price        AS Price,
-                                p.Stock        AS Stock,
-                                b.BrandName    AS Brand,
-                                (
-                                    SELECT TOP (1) i.ImageUrl
-                                    FROM dbo.ProductImages AS i
-                                    WHERE i.ProductId = p.ProductId
-                                    ORDER BY i.SortOder ASC, i.ImageId ASC
-                                ) AS Thumbnail
-                            FROM dbo.Products AS p
-                            LEFT JOIN dbo.Brands AS b ON b.BrandId = p.BrandId
-                            WHERE p.ProductID = @ProductID";
 
-                await using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.Add(new SqlParameter("@ProductID", SqlDbType.Int) { Value = ProductID });
+
+SELECT
+    p.product_name AS name,
+    p.price        AS price,
+    p.stock        AS stock,
+    b.brand_name   AS brand,
+    CASE
+        WHEN p.discount_id IS NULL THEN p.price
+        ELSE p.price * (1 - di.discount_value)
+    END AS price_after_discount,
+    p.discount_id AS discount_id,
+    (
+        SELECT i.image_url
+        FROM product_images i
+        WHERE i.product_id = p.product_id
+        ORDER BY i.sortorder ASC, i.image_id ASC
+        LIMIT 1
+    ) AS thumbnail
+FROM products p
+LEFT JOIN brands b ON b.brand_id = p.brand_id
+LEFT JOIN discount di ON p.discount_id = di.discount_id
+WHERE p.product_code = @product_code;
+
+
+";
+
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.Add(new NpgsqlParameter("@product_code", SqlDbType.VarChar) { Value = ProductCode });
                 await using var reader = await cmd.ExecuteReaderAsync();
+                
                 if (await reader.ReadAsync())
-                {
-
-                    string name = reader.GetString(reader.GetOrdinal("Name"));
-                    decimal price = reader.GetDecimal(reader.GetOrdinal("Price"));
-                    int stock = reader.GetInt32(reader.GetOrdinal("Stock"));
-                    string brand = reader.IsDBNull(reader.GetOrdinal("Brand")) ? string.Empty : reader.GetString(reader.GetOrdinal("Brand"));
-                    string? thumb = reader.IsDBNull(reader.GetOrdinal("Thumbnail")) ? null : reader.GetString(reader.GetOrdinal("Thumbnail"));
-
-                    info = new ProductMainInfo
                     {
-                        Name = name,
-                        Price = price,
-                        Stock = stock,
-                        Brand = brand,
-                        Thumbnail = thumb
-                    };
+                        info = new ProductMainInfo
+                        {
+                            Name = reader.GetString(reader.GetOrdinal("name")),
+                            Price = reader.GetDecimal(reader.GetOrdinal("price")),
+                            priceAfterDiscount = reader.GetDecimal(reader.GetOrdinal("price_after_discount")),
+                            Stock = reader.GetInt32(reader.GetOrdinal("stock")),
+                            Brand = reader.IsDBNull(reader.GetOrdinal("brand"))
+                                        ? string.Empty
+                                        : reader.GetString(reader.GetOrdinal("brand")),
+                            Thumbnail = reader.IsDBNull(reader.GetOrdinal("thumbnail"))
+                                        ? null
+                                        : reader.GetString(reader.GetOrdinal("thumbnail")),
+                            VoucherID = reader.IsDBNull(reader.GetOrdinal("discount_id"))
+                                        ? null
+                                        : reader.GetInt32(reader.GetOrdinal("discount_id"))
+                        };
+                    }
 
-                }
             }
             catch (Exception ex)
             {
@@ -128,20 +142,23 @@ namespace WebsiteComputer.Database
         public static async Task<List<string>> GetImageAsync(string connStr, string ProductCode)
         {
             var result = new List<string>();
-            int ProductID = await ConnectDB.GetProductIDFromProductCode(connStr, ProductCode);
+            var productId = await ConnectDB.GetProductIDFromProductCode(connStr, ProductCode);
             try
             {
-                using var conn = ConnectDB.Create(connStr);
+                using var conn = ConnectDB.ConnectSupabase(connStr);
                 await conn.OpenAsync();
 
-                var sql = @"Select i.ImageUrl
-                            From dbo.ProductImages AS i
-                            where i.ProductID = @ProductID and i.SortOder > 1
-                            Order BY i.SortOder, i.ImageID;
-                            ";
-                await using var cmd = new SqlCommand(sql, conn);
+                var sql = @"
+SELECT i.image_url
+FROM product_images i
+WHERE i.product_id = @ProductId
+  AND i.sortorder > 1
+ORDER BY i.sortorder ASC, i.image_id ASC;
 
-                cmd.Parameters.Add(new SqlParameter("@ProductID", SqlDbType.Int) { Value = ProductID });
+                            ";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+
+                cmd.Parameters.Add(new NpgsqlParameter("@ProductId", SqlDbType.VarChar) { Value = productId });
 
                 await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
@@ -161,6 +178,28 @@ namespace WebsiteComputer.Database
             }
 
             return result;
+        }
+        public static async Task<ProductDetail?> ReadAsDtoAsync(string connStr, string ProductCode)
+        {
+            var main = await GetProductMainAsync(connStr, ProductCode);
+            if (main is null) return null;
+
+            var specs = await GetProductSpecAsync(connStr, ProductCode);
+            var images = await GetImageAsync(connStr, ProductCode);
+
+            return new ProductDetail
+            {
+                id = ProductCode,
+                Name = main.Name,
+                Price = main.Price,
+                priceAfterDiscount = main.priceAfterDiscount,
+                Stock = main.Stock,
+                Brand = main.Brand,
+                Thumbnail = main.Thumbnail,
+                Specs = specs,
+                Images = images,
+                VoucherID = main.VoucherID
+            };
         }
 
         public static async Task<List<ProductGetList>> GetListProductForAdminPage(string connStr, ProductGetList productItem )
@@ -377,58 +416,8 @@ namespace WebsiteComputer.Database
         }
         
         //return object
-        public static async Task<ProductDetail?> ReadAsDtoAsync(string connStr, string ProductCode)
-        {
-            var main = await GetProductMainAsync(connStr, ProductCode);
-            if (main is null) return null;
-
-            var specs = await GetProductSpecAsync(connStr, ProductCode);
-            var images = await GetImageAsync(connStr, ProductCode);
-
-            return new ProductDetail
-            {
-                ProductId = ProductCode,
-                Name = main.Name,
-                Price = main.Price,
-                Stock = main.Stock,
-                Brand = main.Brand,
-                Thumbnail = main.Thumbnail,
-                Specs = specs,
-                Images = images
-            };
-        }
+        
         // return string Json
-        public static async Task<string> ReadAsJsonAync(string connStr, string ProductCode)
-        {
-            int productID = await ConnectDB.GetProductIDFromProductCode(connStr, ProductCode);
-            var main = await GetProductMainAsync(connStr, ProductCode);
-            if (main is null)
-            {
-                return JsonSerializer.Serialize(new { productID, message = "product not found" });
-            }
-            var specs = await GetProductSpecAsync(connStr, ProductCode);
-            var images = await GetImageAsync(connStr, ProductCode);
-            var dto = new ProductDetail
-            {
-                ProductId = ProductCode,
-                Name = main.Name,
-                Price = main.Price,
-                Stock = main.Stock,
-                Brand = main.Brand,
-                Thumbnail = main.Thumbnail,
-                Specs = specs,
-                Images = images
-            };
-
-            var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            });
-            return json;
-        }
-
     }
 }
 

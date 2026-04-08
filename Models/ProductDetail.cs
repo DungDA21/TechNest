@@ -9,21 +9,25 @@ namespace WebsiteComputer.Models
     {
         public string Name { get; init; } = "";
         public decimal Price { get; init; }
+        public decimal priceAfterDiscount { get; init; }
         public int Stock { get; init; }
         public string Brand { get; init; } = "";
         public string? Thumbnail { get; init; }
+        public int? VoucherID { get; set; }
     }
 
     public record ProductDetail
     {
-        public string ProductId { get; init; } = "";
+        public string id { get; init; } = "";
         public string Name { get; init; } = "";
         public decimal Price { get; init; }
+        public decimal priceAfterDiscount { get; init; }
         public int Stock { get; init; }
         public string Brand { get; init; } = "";
         public string? Thumbnail { get; init; }
         public List<string> Images { get; init; } = new();
-        public List<ProductSpec?> Specs { get; init; }
+        public List<ProductSpec?> Specs { get; init; } = []; 
+        public int? VoucherID { get; set; }
     }
 
     public record CreateUpdateProduct

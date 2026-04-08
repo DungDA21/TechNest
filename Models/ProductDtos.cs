@@ -5,11 +5,13 @@
         public string id { get; init; } = "";
         public string name { get; init; } = "";
         public decimal price { get; init; }
+        public decimal priceAfterDiscount { get; set; }
         public string brand { get; init; } = "";
         public string category { get; set; } = "";
         public string? thumbnail { get; init; }
         public int stock { get; init; }
         public DateTime createAt { get; init; }
+        public int? voucherId { get; init; } = null;
     }
 
     public record CreateProductRequest

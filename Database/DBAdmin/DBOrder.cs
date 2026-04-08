@@ -53,7 +53,7 @@ namespace WebsiteComputer.Database.DBAdmin
                 while(await reader.ReadAsync())
                 {
                     list.Add(new GetOrderList { 
-                        orderCode = reader.GetString(reader.GetOrdinal("orderCode")),
+                        orderID = reader.GetString(reader.GetOrdinal("orderCode")),
                         clientName = reader.GetString(reader.GetOrdinal("clientName")),
                         Address = reader.GetString(reader.GetOrdinal("addressOrder")),
                         phoneNumber = reader.GetString(reader.GetOrdinal("phoneNumber")),
@@ -70,7 +70,7 @@ namespace WebsiteComputer.Database.DBAdmin
         public static async Task<OrderDetail> GetOrderDetail(string conStr, string orderCodeDetail)
         {
             var orderId = await ConnectDB.GetOrderIDFromOrderCode(conStr, orderCodeDetail);
-            OrderDetail? orderDetail = null;
+            OrderDetail? orderDetail = new OrderDetail();
             var listOrder = new List<OrderItems>(); 
             try
             {
@@ -109,7 +109,7 @@ namespace WebsiteComputer.Database.DBAdmin
                     {
                         order = new GetOrderList
                         {
-                            orderCode = orderCodeDetail,
+                            orderID = orderCodeDetail,
                             clientName = reader.GetString(reader.GetOrdinal("clientName")),
                             phoneNumber = reader.GetString(reader.GetOrdinal("phoneNumber")),
                             Address = reader.GetString(reader.GetOrdinal("addressOrder")),

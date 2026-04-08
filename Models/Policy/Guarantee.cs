@@ -8,8 +8,8 @@ namespace WebsiteComputer.Models.Policy
     {
         public record GuaranteeProduct()
         {
-            public string id { get; set; } = "";
-            public string productID { get; set; } = "";
+            public string guaranteeID { get; set; } = "";
+            public int productID { get; set; } 
             public DateTime dateStart { get; set; }
             public DateTime dateEnd { get; set; }
         }

@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using WebsiteComputer.Database;
 using WebsiteComputer.Models;
 
@@ -21,6 +23,19 @@ namespace API.ClientInterface
         private string connStr =>
             _config.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
+        [HttpGet("{orderID}")]
+        public async Task<IActionResult> getOrderDetail(string orderID)
+        {
+            var orderDetail = await DBOrder.GetOrderDetail(connStr, orderID);
+            var json = JsonSerializer.Serialize(orderDetail, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+            Console.WriteLine(json);
+            return Ok(orderDetail);
+        }
         [HttpPost]
         public async Task<IActionResult> CreateNewOrder(CreateOrderRequest order)
         {

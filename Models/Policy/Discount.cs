@@ -8,8 +8,7 @@ namespace WebsiteComputer.Models.Policy
     {
         public record DiscountPolicy()
         {
-            public int? discountID { get; set; } 
-            public string? discountCode { get; set; } = "";
+            public string? discountID { get; set; } = "";
             public string? discountName { get; set; } = "";
             public decimal discountValue { get; set; }
             public DateTime dateStart { get; set; }

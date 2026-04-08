@@ -1,6 +1,10 @@
 ﻿
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using System.Data;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using WebsiteComputer.Models;
 using static WebsiteComputer.Models.ClientDtos;
 namespace WebsiteComputer.Database
 {
@@ -15,40 +19,10 @@ namespace WebsiteComputer.Database
         //   .Build();
         //    var connStr = config.GetConnectionString("Default")
         //        ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
-        //    //var clientNew = new ClientDetail
-        //    //{
-        //    //    accountID = 0,
-        //    //    clientName = "Duong duy hoang",
-        //    //    clientAddress = "Quang tri",
-        //    //    phoneNumber = "1234567890",
-        //    //    clientCode = "aaa",
-        //    //    totalMoney = 0,
-        //    //    username = "clientaaa",
-        //    //    password = "1"
-        //    //};
-        //    //await deleteClient(connStr, "CLI-0010");
-        //    //var client = await CreateClient(connStr, clientNew);
-        //    //var List = await readListClient(connStr);
-        //    //var json = JsonSerializer.Serialize(List, new JsonSerializerOptions
-        //    //{
-        //    //    WriteIndented = true,
-        //    //    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        //    //    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        //    //});
-        //    //Console.OutputEncoding = System.Text.Encoding.UTF8;
-        //    //Console.WriteLine(json);
-        //    //await UpdateClient(connStr, "CLI-0009", "Trần Thị Duyên", "0345248654");
+        //    var clientNew = new ClientSignIn("d","d","d");
+        //    await CreateClient(connStr, clientNew);
 
-        //    ClientInformation client = new ClientInformation();
-        //    ClientLogin info = new ClientLogin("client3", "1");
-        //    client = await Login(connStr, info);
-        //    var json = JsonSerializer.Serialize(client, new JsonSerializerOptions
-        //    {
-        //        WriteIndented = true,
-        //        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        //        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        //    });
-        //    Console.WriteLine(json);
+
         //}
         public static async Task<List<ClientDetail>> readListClient(string connStr)
             => await GetClientList(connStr);
@@ -98,11 +72,86 @@ namespace WebsiteComputer.Database
             }
             return listClient;
         }
+        public static async Task<GetClientProfile> GetClientProfile(string conStr, int clientID)
+        {
+            var clientProfile = new GetClientProfile();
+            try 
+            {
+                using var conn = ConnectDB.Create(conStr);
+                await conn.OpenAsync();
+                var sql = @"SELECT 
+                              [ClientName] as name 
+	                          ,[username] as email
+                          FROM [dbo].[Client] as cl
+                          left join Account as a
+                          on a.AccountID = cl.AccountID
+                          where cl.ClientID = @clientID";
+                using var cmd = new SqlCommand(sql , conn);
+                cmd.Parameters.Add(new SqlParameter("@clientID", SqlDbType.Int) { Value = clientID });
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    clientProfile.email = reader.GetString(reader.GetOrdinal("email"));
+                    clientProfile.name = reader.GetString(reader.GetOrdinal("name"));
 
-        public static async Task<int> CreateClient(string connStr, ClientDetail client)
+                }
+            }
+            catch
+            {
+
+            }
+            return clientProfile;
+        }
+        public static async Task<bool> UpdateClientProfile(string conStr, ClientDtos.UpdateClientProfile client, int clientID)
+        {
+            try
+            {
+                using var conn = ConnectDB.Create(conStr);
+                await conn.OpenAsync();
+                var sql = @"begin try 
+                            BEGIN TRAN;
+
+                            UPDATE cl
+                            SET 
+                                cl.ClientName = @clientName
+                            FROM dbo.Client cl
+                            WHERE cl.ClientID = @clientID
+                            UPDATE a
+                            SET 
+	                            a.Username = @gmail,
+                                a.PasswordHash = @newPassword
+                            from dbo.Account a     
+                            inner JOIN Client cl       
+                                ON cl.AccountID = a.AccountID
+                            WHERE cl.ClientID = @clientID And a.PasswordHash = @oldPassword;
+
+                                IF @@ROWCOUNT = 0
+                                    THROW 50001, 'Invalid clientID or old password', 1;
+
+                            COMMIT TRAN;
+                            end try 
+                            begin catch 
+	                            rollback tran; 
+	                            throw; 
+                            end catch;";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.Add(new SqlParameter("@clientID", SqlDbType.Int) { Value = clientID });
+                cmd.Parameters.Add(new SqlParameter("@clientName", SqlDbType.NVarChar) { Value = client.name });
+                cmd.Parameters.Add(new SqlParameter("@gmail", SqlDbType.VarChar) { Value = client.gmail });
+                cmd.Parameters.Add(new SqlParameter("@oldPassword", SqlDbType.VarChar) { Value = client.currentPassword });
+                cmd.Parameters.Add(new SqlParameter("@newPassword", SqlDbType.VarChar) { Value = client.newPassword });
+                await cmd.ExecuteNonQueryAsync();
+
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+        public static async Task<int> CreateClient(string connStr, ClientSignIn clientSignIn)
         {
             int clientID = 0;
-            
             try
             {
                 using var conn = ConnectDB.Create(connStr);
@@ -113,56 +162,62 @@ namespace WebsiteComputer.Database
 
                 var AccCode = $"Acc-{now:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}";
                 var sql = @"
-                            declare 
-                             @ClientID int
+                            DECLARE
+    @AccountID INT,
+    @ClientID INT;
 
+DECLARE @AccountTable TABLE (AccountID INT);
+DECLARE @ClientTable TABLE (ClientID INT);
 
-                            INSERT INTO [dbo].[Account]
-                                       ([AccountCode]
-                                       ,[Username]
-                                       ,[PasswordHash]
-                                       ,[Roles])
-                            output inserted.AccountID
-                            VALUES
-                                (@AccountCode
-                                ,@Username
-                                ,@PasswordHash
-                                ,@Roles)
+INSERT INTO [dbo].[Account]
+(
+    AccountCode,
+    Username,
+    PasswordHash,
+    Roles
+)
+OUTPUT INSERTED.AccountID INTO @AccountTable
+VALUES
+(
+    @AccountCode,
+    @Username,
+    @PasswordHash,
+    @Roles
+);
 
-                            Declare @AccountID Int = cast(scope_identity() as int);
-                            INSERT INTO [dbo].[Client]
-                                       ([AccountID] 
-                                       ,[ClientCode]
-                                       ,[ClientName]
-                                       ,[PhoneNumber]
-                                       ,[ClientAddress]
-                                       ,[TotalMoney])
-                                 VALUES
-                                       (@AccountID
-                                       ,@ClientCode
-                                       ,@ClientName
-                                       ,@PhoneNumber
-                                       ,@ClientAddress
-                                       ,@TotalMonney)
+SELECT @AccountID = AccountID FROM @AccountTable;
 
-                            select @ClientID = ClientID 
-                            from Dbo.Client as cl
-                            where cl.ClientCode = @ClientCode
+INSERT INTO [dbo].[Client]
+(
+    AccountID,
+    ClientCode,
+    ClientName,
+    TotalMoney
+)
+OUTPUT INSERTED.ClientID INTO @ClientTable
+VALUES
+(
+    @AccountID,
+    @ClientCode,
+    @ClientName,
+    0.01
+);
 
-                            INSERT INTO [dbo].[Cart]
-                                       ([ClientID])
-                                 VALUES
-                                       (@ClientID)
-                                
+SELECT @ClientID = ClientID FROM @ClientTable;
+
+INSERT INTO [dbo].[Cart] (ClientID)
+VALUES (@ClientID);
+
+SELECT 
+    @AccountID AS AccountID,
+    @ClientID AS ClientID;
                             ";
                 using var cmd = new SqlCommand(sql, conn, (SqlTransaction)tx);
                 cmd.Parameters.Add(new SqlParameter("@AccountCode", SqlDbType.VarChar) { Value = AccCode });
                 cmd.Parameters.Add(new SqlParameter("@ClientCode", SqlDbType.VarChar) { Value = ClientCode });
-                cmd.Parameters.Add(new SqlParameter("@Username", SqlDbType.VarChar) { Value = client.username });
-                cmd.Parameters.Add(new SqlParameter("@PasswordHash", SqlDbType.VarChar) { Value = client.password });
-                cmd.Parameters.Add(new SqlParameter("@ClientName", SqlDbType.NVarChar) { Value = client.clientName });
-                cmd.Parameters.Add(new SqlParameter("@PhoneNumber", SqlDbType.VarChar) { Value = client.phoneNumber });
-                cmd.Parameters.Add(new SqlParameter("@ClientAddress", SqlDbType.NVarChar) { Value = client.clientAddress });
+                cmd.Parameters.Add(new SqlParameter("@Username", SqlDbType.VarChar) { Value = clientSignIn.email });
+                cmd.Parameters.Add(new SqlParameter("@PasswordHash", SqlDbType.VarChar) { Value = clientSignIn.password });
+                cmd.Parameters.Add(new SqlParameter("@ClientName", SqlDbType.NVarChar) { Value = clientSignIn.fullName });
                 cmd.Parameters.Add(new SqlParameter("@Roles", SqlDbType.VarChar) { Value = "client" });
                 var clientIDobj = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
                 clientID = Convert.ToInt32(clientIDobj);
@@ -258,7 +313,7 @@ namespace WebsiteComputer.Database
             }
             
         }
-        public static async Task<ClientInformation> Login(string conStr, ClientLogin clientLogin ) {
+        public static async Task<ClientInformation?> Login(string conStr, ClientLogin clientLogin ) {
             var client = new ClientInformation();
             try {
                 var conn = ConnectDB.Create(conStr);
@@ -277,13 +332,13 @@ namespace WebsiteComputer.Database
                               where a.Username = @username and a.PasswordHash = @password
                             ";
                 await using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.Add(new SqlParameter("@username", SqlDbType.VarChar) { Value = clientLogin.username });
+                cmd.Parameters.Add(new SqlParameter("@username", SqlDbType.VarChar) { Value = clientLogin.email });
                 cmd.Parameters.Add(new SqlParameter("@password", SqlDbType.VarChar) { Value = clientLogin.password });
                 using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
                     client.clientName = reader.GetString(reader.GetOrdinal("clientName"));
-                    client.clientCode = reader.GetString(reader.GetOrdinal("clientCode"));
+                    client.clientID = reader.GetString(reader.GetOrdinal("clientCode"));
                     client.phoneNumber = reader.GetString(reader.GetOrdinal("phoneNumber"));
                     client.clientAddress = reader.GetString(reader.GetOrdinal("clientAddress"));
                     client.totalMoney = reader.GetDecimal(reader.GetOrdinal("totalMoney"));
@@ -293,6 +348,10 @@ namespace WebsiteComputer.Database
             catch
             {
                 throw;
+            }
+            if (client.clientName == null)
+            {
+                client = null;
             }
             return client;
         }

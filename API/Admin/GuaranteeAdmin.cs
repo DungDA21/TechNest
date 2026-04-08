@@ -27,31 +27,31 @@ namespace API.Admin
         [HttpGet("{id}")]
         public async Task<IActionResult> GetGuarantee(string id)
         {
-            var results = DBAdminGuarantee.ReadGuarantee(connStr, id);
+            var results = await DBAdminGuarantee.ReadGuarantee(connStr, id);
             return Ok(results);
         }
         [HttpGet]
-        public async Task<IActionResult> getGuaranteeList()
+        public async Task<IActionResult> GetGuaranteeList()
         {
-            var results = DBAdminGuarantee.ReadListGuarantee(connStr);
+            var results = await DBAdminGuarantee.ReadListGuarantee(connStr);
             return Ok(results);            
         }
         [HttpPost]
-        public async Task<IActionResult> postGuarantee([FromBody]Guarantee.GuaranteeProduct guarantee)
+        public async Task<IActionResult> PostGuarantee([FromBody]Guarantee.GuaranteeProduct guarantee)
         {
-            var results = DBAdminGuarantee.CreateGuarantee(connStr, guarantee);
+            var results = await DBAdminGuarantee.CreateGuarantee(connStr, guarantee);
             return Ok(results);  
         }
         [HttpPut]
-        public async Task<IActionResult> putGuarantee([FromBody]Guarantee.GuaranteeProduct guarantee)
+        public async Task<IActionResult> PutGuarantee([FromBody]Guarantee.GuaranteeProduct guarantee)
         {
-            var results = DBAdminGuarantee.UpdateGuarantee(connStr, guarantee);
+            var results = await DBAdminGuarantee.UpdateGuarantee(connStr, guarantee);
             return Ok(results);             
         }
-        [HttpDelete("{Id}")]
-        public async Task<IActionResult> deleteGuarantee(string id)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteGuarantee(string id)
         {
-            var results = DBAdminGuarantee.DeleteGuarantee(connStr, id);
+            var results = await DBAdminGuarantee.DeleteGuarantee(connStr, id);
             return Ok(results);
         }
 

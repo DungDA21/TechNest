@@ -54,10 +54,12 @@ namespace API.Admin
             var newDiscountUpdate = await DBAdminDiscount.UpdateDiscount(connStr, discountPolicyInfo);
             return Ok(newDiscountUpdate);
         }
-        [HttpDelete("{Id}")]
-        public async Task<IActionResult> deleteDiscount(string Id)
+        //[HttpPut("")]
+        //public async Task
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> deleteDiscount(string id)
         {
-            var delete = await DBAdminDiscount.DeleteDiscount(connStr, Id);
+            var delete = await DBAdminDiscount.DeleteDiscount(connStr, id);
             return Ok(delete);
         }
 
